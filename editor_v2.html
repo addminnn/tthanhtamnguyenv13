@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Python Editor V2</title>
+  <style>
+    :root{
+      --bg:#f3f5f8; --card:#fff; --border:#e6eaf0; --muted:#667085; --text:#101828;
+      --out-bg:#0b1220; --out-text:#e6f2ff; --out-muted:#9bb4d0; --danger:#ff4d4f; --ok:#2ecc71;
+      --btn:#1677ff; --btn-hover:#0f63d6; --btn2:#e9f2ff; --btn2-text:#0b5ed7;
+      --coach-accent:#0b5ed7; --coach-soft:#eef6ff;
+      --stmt-bg:#ffffff;
+      --stmt-border:#dbeafe;
+      --stmt-title:#0b5ed7;
+    }
+    *{ box-sizing:border-box; }
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--text); }
+    .page{ max-width:1200px; margin:18px auto; padding:0 14px 18px; display:flex; flex-direction:column; gap:14px; }
+    .editor-card{ background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:hidden; box-shadow:0 8px 22px rgba(16,24,40,.06); }
+
+    .editor-toolbar{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:10px 12px; border-bottom:1px solid var(--border); background:#fff; gap:12px; flex-wrap:wrap;
+    }
+    .toolbar-left{ display:flex; align-items:center; gap:10px; min-width:240px; flex:1 1 320px; }
+    .dot{ width:10px;height:10px;border-radius:50%; background:#d0d5dd; }
+    .title{ font-weight:900; font-size:14px; }
+    .sub{ font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:520px; }
+    .toolbar-mid{ display:flex; align-items:center; gap:10px; flex:1 1 360px; min-width:280px; }
+    .toolbar-right{ display:flex; align-items:center; gap:10px; }
+
+    .btn{ border:0; background:var(--btn); color:#fff; padding:9px 14px; border-radius:10px; cursor:pointer; font-weight:900; font-size:13px; }
+    .btn:hover{ background:var(--btn-hover); }
+    .btn2{ border:1px solid #cfe3ff; background:var(--btn2); color:var(--btn2-text); padding:9px 14px; border-radius:10px; cursor:pointer; font-weight:900; font-size:13px; }
+
+    .status{ font-size:12px; color:var(--muted); white-space:nowrap; }
+    .pill{ display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:900; background:#eef2ff; color:#344054; border:1px solid var(--border); }
+    .pill.ok{ background:#e9fff0; color:#0a7a2a; border-color:#bff0cd; }
+    .pill.bad{ background:#ffecec; color:#b00020; border-color:#ffb7b7; }
+
+    .statementbar{ padding:12px 12px; border-bottom:1px solid var(--border); background:#fff; }
+    .statementbox{ background:var(--stmt-bg); border:2px solid var(--stmt-border); border-radius:14px; padding:14px 14px; }
+    .statementtitle{ font-weight:1000; font-size:18px; color:var(--stmt-title); margin:0 0 8px 0; line-height:1.2; }
+    .statementtext{ margin:0; font-size:16px; line-height:1.55; white-space:pre-wrap; color:#123b63; }
+
+    .coachbar{ padding:10px 12px; border-bottom:1px solid var(--border); background:#fff; display:flex; gap:10px; align-items:flex-start; }
+    .coach-left{ flex:1 1 auto; min-width:280px; }
+    .coach-title{ font-size:12px; font-weight:900; color:var(--coach-accent); margin-bottom:6px; }
+    .coach-next{ font-size:12px; line-height:1.35; background:var(--coach-soft); border:1px solid #d9ebff; padding:8px 10px; border-radius:10px; white-space:pre-wrap; color:#123b63; }
+    .coach-right{ flex:0 0 360px; max-width:420px; background:#fff; border:1px solid var(--border); border-radius:12px; padding:8px 10px; }
+    .checklist{ margin:0; padding-left:18px; font-size:12px; color:#123b63; line-height:1.55; }
+    .checklist .ok{ color:#0a7a2a; font-weight:900; } .checklist .no{ color:#b00020; font-weight:900; }
+    @media (max-width: 920px){ .coachbar{ flex-direction:column; } .coach-right{ width:100%; max-width:none; } }
+
+    .code-wrap{ height:430px; position:relative; background:#fff; }
+    @media (max-width: 920px){ .code-wrap{ height:360px; } }
+    #editor{ height:100%; border-top:1px solid var(--border); }
+
+    .bottom{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    @media (max-width: 920px){ .bottom{ grid-template-columns:1fr; } }
+    .panel{ background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:hidden; box-shadow:0 8px 22px rgba(16,24,40,.06); min-height:220px; }
+    .panel-head{ padding:10px 12px; border-bottom:1px solid var(--border); background:#fff; }
+    .panel-title{ font-weight:900; font-size:14px; margin:0; }
+    .panel-sub{ margin-top:2px; font-size:12px; color:var(--muted); white-space:pre-wrap; line-height:1.35; }
+    .stdin{ width:100%; height:170px; border:0; outline:none; resize:none; padding:12px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace; font-size:14px; line-height:1.5; background:#fff; }
+    .out{ width:100%; height:170px; padding:12px; background:var(--out-bg); color:var(--out-text);
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace; font-size:13px; line-height:1.55; overflow:auto; white-space:pre-wrap; }
+    .out .x{ color:var(--danger); font-weight:900; } .out .muted{ color:var(--out-muted); }
+    .out .ok{ color:var(--ok); font-weight:900; } .out .hint{ color:#b7d7ff; font-weight:900; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="editor-card">
+    <div class="editor-toolbar">
+      <div class="toolbar-left">
+        <div class="dot"></div>
+        <div style="min-width:0">
+          <div class="title">Python</div>
+          <div class="sub" id="subtitle">Viết code ở đây • Realtime Coach • Test PASS/FAIL</div>
+        </div>
+      </div>
+
+      <div class="toolbar-mid">
+        <span class="pill" id="pill">Chưa chạy</span>
+        <span class="status" id="scoreMeta">Test: 0/0</span>
+      </div>
+
+      <div class="toolbar-right">
+        <div class="status" id="status">Đang tải Python...</div>
+        <button class="btn2" id="loadBtn" disabled>Nạp khung</button>
+        <button class="btn2" id="hintBtn" disabled>Gợi ý</button>
+        <button class="btn" id="runBtn" disabled>Test</button>
+      </div>
+    </div>
+
+    <div class="statementbar">
+      <div class="statementbox">
+        <div class="statementtitle" id="statementTitle">Đề bài</div>
+        <pre class="statementtext" id="statementText">(Chờ bài...)</pre>
+      </div>
+    </div>
+
+    <div class="coachbar">
+      <div class="coach-left">
+        <div class="coach-title">🧠 Realtime Coach (gợi ý theo dòng đang gõ)</div>
+        <div class="coach-next" id="coachNext">(Bắt đầu gõ code để nhận gợi ý tức thì)</div>
+      </div>
+      <div class="coach-right">
+        <div class="coach-title" style="margin-bottom:6px;">Checklist</div>
+        <ul class="checklist" id="coachChecklist"></ul>
+      </div>
+    </div>
+
+    <div class="code-wrap"><div id="editor"></div></div>
+  </div>
+
+  <div class="bottom">
+    <div class="panel">
+      <div class="panel-head">
+        <p class="panel-title">Input (stdin)</p>
+        <div class="panel-sub">Nhập dữ liệu đầu vào để chạy thử. (Test dùng test case riêng)</div>
+      </div>
+      <textarea class="stdin" id="stdin" spellcheck="false"></textarea>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <p class="panel-title">Output / Lỗi / PASS-FAIL</p>
+        <div class="panel-sub">Lỗi tiếng Việt + nguyên nhân + cách sửa theo “đúng bệnh”.</div>
+      </div>
+      <div class="out" id="out"><span class="muted">Chưa chạy.</span></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+
+<script>
+  // ====== State nhận từ parent ======
+  let USER_ID = null;
+  let LESSON = null;
+  let TESTS = [];
+
+  // UI refs
+  const elStdin = document.getElementById('stdin');
+  const elOut = document.getElementById('out');
+  const elRun = document.getElementById('runBtn');
+  const elHint = document.getElementById('hintBtn');
+  const elLoad = document.getElementById('loadBtn');
+  const elStatus = document.getElementById('status');
+  const elPill = document.getElementById('pill');
+  const elScoreMeta = document.getElementById('scoreMeta');
+  const elSubtitle = document.getElementById('subtitle');
+  const elCoachNext = document.getElementById('coachNext');
+  const elCoachChecklist = document.getElementById('coachChecklist');
+  const elStatementTitle = document.getElementById('statementTitle');
+  const elStatementText = document.getElementById('statementText');
+
+  let pyodide = null;
+  let editor = null;
+
+  // autosave
+  let saveTimer = null;
+  function saveCode(){
+    if(!USER_ID || !LESSON || !editor) return;
+    try{ localStorage.setItem(`py10:${USER_ID}:${LESSON.id}`, editor.getValue() || ''); }catch(e){}
+  }
+  function scheduleSave(){
+    if(saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveCode, 250);
+  }
+
+  // helpers
+  function escapeHTML(s){ return (s??'').toString().replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+  function setOutHTML(html){ elOut.innerHTML = html; }
+  function setPill(text, kind){ elPill.textContent=text; elPill.className='pill'+(kind?(' '+kind):''); }
+  function normalizeOutput(out){
+    out=(out??'').replace(/\r\n/g,'\n');
+    out=out.split('\n').map(l=>l.trimEnd()).join('\n');
+    out=out.replace(/\n+$/g,'\n');
+    return out;
+  }
+  function simplifyText(s){
+    s=(s??'').toString().toLowerCase().trim();
+    try{ s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(e){}
+    s=s.replace(/\s+/g,' ');
+    return s;
+  }
+
+  // ====== PASS theo cấu trúc (đồng bộ với web cũ) ======
+  function _nonCommentLineCount(code){
+    return String(code||'').split(/\n/).map(s=>s.trim()).filter(s=>s && !s.startsWith('#')).length;
+  }
+  function structureOk(code, lesson){
+    const c = String(code||'');
+    const lc = c.toLowerCase();
+    const need = [];
+
+    if(_nonCommentLineCount(c) === 0) need.push('có code (không để trống)');
+
+    const short = String((lesson && lesson.short) || '').toUpperCase().trim();
+    const title = String((lesson && lesson.title) || '');
+    const text  = String((lesson && lesson.text)  || '');
+    const skill = String((lesson && lesson.skill) || '');
+    const allTxt = (title + ' ' + short + ' ' + skill + ' ' + text);
+
+    const inpSpec = (lesson && lesson.input) ? String(lesson.input) : '';
+    const tests = (lesson && Array.isArray(lesson.tests)) ? lesson.tests : [];
+    const hasSampleIn = !!String((lesson && lesson.sampleIn) || '').trim();
+    const hasTestIn   = tests.some(t => t && typeof t.stdin === 'string' && String(t.stdin).trim().length);
+    const needInput   = ((inpSpec && inpSpec.trim() && inpSpec.trim() !== '(không có)') || hasSampleIn || hasTestIn);
+    const hasInput    = /\binput\s*\(/.test(lc) || /sys\.stdin/.test(lc);
+    if(needInput && !hasInput) need.push('đọc input()');
+
+    const hasPrint = /\bprint\s*\(/.test(lc);
+    if(!hasPrint) need.push('in kết quả bằng print()');
+
+    const needIf = (short === 'IF') || /rẽ\s*nhánh|điều\s*kiện|nếu\s+|so\s*sánh|phân\s*loại/i.test(allTxt);
+    if(needIf && !/\bif\b/.test(lc)) need.push('dùng if (điều kiện)');
+
+    const explicitWhile = /vòng\s*lặp\s*while|dùng\s*while|sử\s*dụng\s*while/i.test(allTxt);
+    const explicitFor   = /vòng\s*lặp\s*for|for\s+range|dùng\s*for|sử\s*dụng\s*for/i.test(allTxt);
+    const needLoop = (short === 'FOR' || short === 'WHILE') || /vòng\s*lặp|lặp\s*lại|từ\s+1\s+đến|cho\s+đến\s+khi|mỗi\s+lần|duyệt/i.test(allTxt);
+    if(needLoop){
+      if(explicitWhile){
+        if(!/\bwhile\b/.test(lc)) need.push('dùng while');
+      }else if(explicitFor){
+        if(!/\bfor\b/.test(lc)) need.push('dùng for');
+      }else{
+        if(!(/\bfor\b/.test(lc) || /\bwhile\b/.test(lc))) need.push('dùng vòng lặp (for/while)');
+      }
+    }
+
+    const needList = (short === 'LIST') || /danh\s*sách|list|mảng|array/i.test(allTxt);
+    if(needList){
+      if(!/\[/.test(c) && !/\blist\s*\(/.test(lc) && !/\.append\s*\(/.test(lc)) need.push('dùng list ([], list(), append)');
+    }
+
+    const negFuncTopic = /(không\s*dùng\s*hàm|khong\s*dung\s*ham|không\s*sử\s*dụng\s*hàm|khong\s*su\s*dung\s*ham)/i.test(allTxt);
+    const funcRequired = /hãy\s*viết\s*hàm|viết\s*hàm|tạo\s*hàm|xây\s*dựng\s*hàm|define\s+a\s+function/i.test(allTxt);
+    if(!negFuncTopic && funcRequired){
+      if(!/\bdef\s+\w+\s*\(/.test(lc)) need.push('định nghĩa hàm def');
+    }
+
+    // Cấm dùng hàm theo đề: "không dùng hàm len" ...
+    try{
+      const forb = [];
+      const r1 = /không\s*(?:sử\s*dụng|dùng)\s*hàm\s+([a-z_][a-z0-9_]*)/gi;
+      const r2 = /khong\s*(?:su\s*dung|dung)\s*ham\s+([a-z_][a-z0-9_]*)/gi;
+      let mm;
+      while((mm = r1.exec(allTxt)) !== null){ if(mm[1]) forb.push(String(mm[1]).toLowerCase()); }
+      while((mm = r2.exec(allTxt)) !== null){ if(mm[1]) forb.push(String(mm[1]).toLowerCase()); }
+      const uniq = Array.from(new Set(forb)).filter(Boolean);
+      const used = uniq.filter(fn => new RegExp('\\b' + fn + '\\s*\\(', 'i').test(c||''));
+      if(used.length) need.push('không dùng hàm bị cấm: ' + used.map(x=>x+'()').join(', '));
+    }catch(e){}
+
+    return { ok: need.length === 0, need };
+  }
+
+  // ===== Realtime coach (nhẹ, bám theo structureOk) =====
+  function analyzeChecklist(code){
+    const c = code || '';
+    const lc = c.toLowerCase();
+    const st = structureOk(c, LESSON || {});
+
+    const checks = [
+      {key:'input', label:'Đã đọc input', ok:/\binput\s*\(/.test(lc) || /sys\.stdin/.test(lc) || !st.need.includes('đọc input()')},
+      {key:'print', label:'Đã in kết quả (print)', ok:/\bprint\s*\(/.test(lc)},
+      {key:'if', label:'Nếu cần thì có if', ok:(!st.need.includes('dùng if (điều kiện)')) || /\bif\b/.test(lc)},
+      {key:'loop', label:'Nếu cần thì có vòng lặp', ok:(!st.need.some(x=>x.startsWith('dùng vòng lặp')||x==='dùng for'||x==='dùng while')) || (/\bfor\b/.test(lc)||/\bwhile\b/.test(lc))},
+    ];
+
+    let next = '';
+    if(!st.ok) next = 'Bước tiếp theo: ' + st.need.slice(0,4).join(', ') + '.';
+    else next = '✅ Đủ cấu trúc cơ bản. Bấm Test để PASS (không cần khớp output).';
+
+    return {checks, next};
+  }
+  function updateCoach(){
+    const {checks, next} = analyzeChecklist(editor ? editor.getValue() : '');
+    elCoachChecklist.innerHTML = checks.map(c => `<li>${c.ok?`<span class="ok">✅</span>`:`<span class="no">⬜</span>`} ${escapeHTML(c.label)}</li>`).join('');
+    elCoachNext.textContent = next;
+  }
+  let coachTimer = null;
+  function debounceCoach(ms=120){
+    if(coachTimer) clearTimeout(coachTimer);
+    coachTimer = setTimeout(updateCoach, ms);
+  }
+
+  // ===== Runner (Pyodide) =====
+  function pyTripleQuoteSafe(s){
+    return (s ?? '').replaceAll('\\', '\\\\').replaceAll('"""', '\\"""');
+  }
+  async function runPythonWithInput(code, inputStr){
+    if(!pyodide) throw new Error('Pyodide chưa sẵn sàng');
+    const indented = (code||'').split('\n').map(l=>'    '+l).join('\n');
+    const py = `\nimport sys, io, traceback, builtins\n__in = """${pyTripleQuoteSafe(inputStr)}"""\nsys.stdin = io.StringIO(__in)\nsys.stdout = io.StringIO()\nsys.stderr = io.StringIO()\n\ndef _silent_input(prompt=None):\n    return sys.stdin.readline().rstrip("\\n")\nbuiltins.input = _silent_input\n\ntry:\n${indented}\nexcept Exception:\n    traceback.print_exc()\n\n__out = sys.stdout.getvalue()\n__err = sys.stderr.getvalue()\n`;
+    await pyodide.runPythonAsync(py);
+    return {
+      out: pyodide.globals.get('__out') || '',
+      err: pyodide.globals.get('__err') || ''
+    };
+  }
+
+  function hasDanglingBlock(code){
+    const lines=(code||'').replace(/\r\n/g,'\n').split('\n');
+    for(let i=0;i<lines.length;i++){
+      const line=lines[i];
+      const t=line.trim();
+      if(!t || t.startsWith('#')) continue;
+      const isBlock=/^(if|elif|else|for|while|def|try|except|finally|with)\b/.test(t) && t.endsWith(':');
+      if(!isBlock) continue;
+      let j=i+1;
+      while(j<lines.length && lines[j].trim()==='') j++;
+      if(j>=lines.length) return {ok:false,line:i+1,reason:'khối lệnh bị thiếu nội dung (thiếu thân khối)'};
+      const next=lines[j];
+      const indentNow=line.match(/^\s*/)[0].length;
+      const indentNext=next.match(/^\s*/)[0].length;
+      if(indentNext<=indentNow) return {ok:false,line:i+1,reason:"thiếu thụt lề (thiếu body sau dấu ':')"};
+    }
+    return {ok:true};
+  }
+
+  function viExplainQuick(err, code){
+    const m = simplifyText(err);
+    if(m.includes('indentationerror')) return '❌ Lỗi thụt lề: Sau dòng có ":" phải có dòng thụt vào 4 dấu cách.';
+    if(m.includes('syntaxerror')) return '❌ Lỗi cú pháp: kiểm tra dấu ":" / ngoặc / dấu nháy.';
+    if(m.includes('valueerror')) return '❌ Lỗi ép kiểu: int()/float() nhưng input không phải số.';
+    if(m.includes('eoferror')) return '❌ Thiếu input: chương trình cần nhiều dòng input hơn.';
+    return '❌ Lỗi khi chạy: hãy xem dòng báo lỗi cuối cùng.';
+  }
+
+  async function runAndTest(){
+    if(!LESSON) return;
+    const code = editor.getValue();
+    const stdinTrial = elStdin.value || '';
+
+    setPill('Đang test...','');
+    setOutHTML(`<span class="muted">Đang chạy thử + test...</span>`);
+    elRun.disabled = true;
+
+    try{
+      // 1) chạy thử với stdin hiện tại
+      const trial = await runPythonWithInput(code, stdinTrial);
+      if(trial.err && trial.err.trim()){
+        setPill('Lỗi khi chạy','bad');
+        const d = hasDanglingBlock(code);
+        const extra = (!d.ok) ? `\n\n⚠️ Bạn đang thiếu thân khối sau ':' (dòng ${d.line}).` : '';
+        setOutHTML(`<span class="x">${escapeHTML(viExplainQuick(trial.err, code) + extra)}\n\n${trial.err}</span>`);
+        updateCoach();
+        return;
+      }
+
+      // 2) test theo bộ test của bài (chỉ cần chạy không lỗi)
+      const tests = Array.isArray(TESTS) ? TESTS : [];
+      let pass = 0;
+      for(let i=0;i<tests.length;i++){
+        const tc = tests[i];
+        const r = await runPythonWithInput(code, tc.stdin || '');
+        if(r.err && r.err.trim()){
+          setPill('FAIL ❌','bad');
+          elScoreMeta.textContent = `Test: ${pass}/${tests.length}`;
+          setOutHTML(
+            `<span class="x">❌ FAIL</span> <span class="muted">(Lỗi ở test #${i+1})</span>\n`+
+            `<span class="hint">💡 ${escapeHTML(viExplainQuick(r.err, code))}</span>\n\n`+
+            `${escapeHTML(r.err)}`
+          );
+          updateCoach();
+          return;
+        }
+        pass++;
+      }
+
+      elScoreMeta.textContent = `Test: ${pass}/${tests.length}`;
+
+      // 3) PASS theo cấu trúc (giống web cũ)
+      const st = structureOk(code, LESSON);
+      if(st.ok && pass === tests.length){
+        setPill('PASS ✅','ok');
+        const trialOut = normalizeOutput(trial.out);
+        setOutHTML(`<span class="ok">✅ PASS</span> <span class="muted">(PASS theo cấu trúc, không cần khớp output)</span>\n\n${escapeHTML(trialOut || '(Không có output)')}`);
+        // báo parent để mở khóa + đồng bộ tiến trình
+        try{ parent.postMessage({ type:'EDITOR_V2_PASS', lessonId: LESSON.id }, '*'); }catch(e){}
+      } else {
+        setPill('FAIL ❌','bad');
+        const trialOut = normalizeOutput(trial.out);
+        const why = st.ok ? 'Code chạy không lỗi nhưng test chưa đủ.' : ('Thiếu cấu trúc để PASS: ' + st.need.slice(0,6).join(', '));
+        setOutHTML(
+          `<span class="x">❌ FAIL</span> <span class="muted">(Chưa đạt PASS theo cấu trúc)</span>\n`+
+          `<span class="hint">💡 ${escapeHTML(why)}</span>\n\n`+
+          `${escapeHTML(trialOut || '(Không có output)')}`
+        );
+      }
+
+      updateCoach();
+
+    } catch(e){
+      setPill('Lỗi hệ thống','bad');
+      setOutHTML(`<span class="x">❌ Lỗi hệ thống:</span>\n${escapeHTML(e?.message || String(e))}`);
+    } finally {
+      elRun.disabled = false;
+    }
+  }
+
+  // Hint (đơn giản)
+  function hintText(){
+    if(!LESSON) return 'Chưa có bài.';
+    const st = structureOk(editor.getValue(), LESSON);
+    if(st.ok) return 'Bạn đã đủ cấu trúc cơ bản. Nếu còn FAIL: kiểm tra lỗi runtime (chia 0, ép kiểu...)';
+    return 'Thiếu để PASS: ' + st.need.slice(0,6).join(', ') + '.';
+  }
+
+  // Load scaffold
+  function loadScaffold(){
+    if(!LESSON || !editor) return;
+    editor.setValue(LESSON.scaffold || '');
+    setOutHTML(`<span class="hint">💡 Đã nạp khung code.</span>`);
+    debounceCoach(0);
+  }
+
+  // ===== Monaco + Pyodide boot =====
+  require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+  require(['vs/editor/editor.main'], async function(){
+    editor = monaco.editor.create(document.getElementById('editor'), {
+      value: '# Chờ bài...\n',
+      language: 'python',
+      theme: 'vs',
+      automaticLayout: true,
+      minimap: { enabled: false },
+      fontSize: 14,
+      lineHeight: 21,
+      fontFamily: 'ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace',
+      scrollBeyondLastLine: false,
+      wordWrap: 'off',
+      tabSize: 4,
+      insertSpaces: true,
+    });
+
+    editor.onDidChangeModelContent(()=>{ scheduleSave(); debounceCoach(120); });
+    editor.onDidChangeCursorPosition(()=>{ debounceCoach(0); });
+
+    // UI buttons
+    elLoad.addEventListener('click', loadScaffold);
+    elHint.addEventListener('click', ()=>{
+      setOutHTML(`<span class="hint">💡 Gợi ý</span>\n\n${escapeHTML(hintText())}`);
+    });
+    elRun.addEventListener('click', runAndTest);
+
+    // Pyodide
+    elStatus.textContent='Đang tải Python...';
+    setPill('Đang tải...','');
+    try{
+      pyodide = await loadPyodide();
+      elStatus.textContent='Sẵn sàng';
+      setPill('Chưa chạy','');
+      elRun.disabled=false;
+      elHint.disabled=false;
+      elLoad.disabled=false;
+      debounceCoach(0);
+    }catch(e){
+      elStatus.textContent='Không tải được Python';
+      setPill('Lỗi tải Python','bad');
+      setOutHTML(`<span class="x">Không tải được Pyodide. Kiểm tra mạng / CDN.</span>`);
+    }
+
+    // báo parent iframe ready
+    try{ parent.postMessage({ type:'EDITOR_V2_READY' }, '*'); }catch(e){}
+  });
+
+  // ===== Nhận dữ liệu bài từ parent =====
+  window.addEventListener('message', (ev)=>{
+    const d = ev && ev.data ? ev.data : null;
+    if(!d || typeof d !== 'object') return;
+    if(d.type === 'LOAD_LESSON'){
+      USER_ID = d.userId || null;
+      LESSON = d.lesson || null;
+      TESTS = (LESSON && Array.isArray(LESSON.tests)) ? LESSON.tests : [];
+
+      // render
+      if(LESSON){
+        elStatementTitle.textContent = (LESSON.id ? (LESSON.id + ' — ') : '') + (LESSON.title || 'Đề bài');
+        elStatementText.textContent = LESSON.text || '';
+        elSubtitle.textContent = `${LESSON.short || ''} • ${LESSON.skill || ''}`.trim() || 'Bài tập';
+        elStdin.value = LESSON.sampleIn || '';
+        elScoreMeta.textContent = `Test: 0/${TESTS.length}`;
+
+        // load code: ưu tiên code đã lưu
+        let saved = '';
+        try{ saved = (USER_ID && LESSON.id) ? (localStorage.getItem(`py10:${USER_ID}:${LESSON.id}`) || '') : ''; }catch(e){}
+        editor && editor.setValue((saved && saved.trim()) ? saved : (LESSON.scaffold || ''));
+
+        setPill('Chưa chạy','');
+        setOutHTML(`<span class="muted">Chưa chạy.</span>`);
+        debounceCoach(0);
+      }
+    }
+  }, false);
+</script>
+</body>
+</html>
